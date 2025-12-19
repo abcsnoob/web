@@ -1,65 +1,87 @@
-import Image from "next/image";
+"use client";
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
+  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<{role: 'user' | 'model', text: string}[]>([]);
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Tự động cuộn xuống khi có tin nhắn mới cho mượt UI
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages]);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input;
+    setMessages(prev => [...prev, { role: "user", text: userMsg }]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          messages: [...messages, { role: "user", text: userMsg }].map(m => ({
+            role: m.role,
+            parts: [{ text: m.text }]
+          }))
+        }),
+      });
+      const data = await res.json();
+      setMessages(prev => [...prev, { role: "model", text: data.text }]);
+    } catch (e) {
+      setMessages(prev => [...prev, { role: "model", text: "Lag vcl rồi ông ơi, hoặc hết Satoshi trả tiền API rồi... #FreeAbcsnoobhelper" }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-black text-[#00ff00] font-mono p-4 flex flex-col items-center">
+      <div className="w-full max-w-2xl border-2 border-[#00ff00] p-4 bg-zinc-900 shadow-[0_0_15px_rgba(0,255,0,0.3)]">
+        <header className="border-bottom border-[#00ff00] mb-4 pb-2 flex justify-between items-center">
+          <h1 className="text-xl font-bold blink">ABCC'S NOOB TERMINAL v1.0</h1>
+          <span className="text-xs bg-[#00ff00] text-black px-2">#FreeAbcsnoobhelper</span>
+        </header>
+
+        <div ref={scrollRef} className="h-[60vh] overflow-y-auto mb-4 space-y-4 p-2 custom-scrollbar">
+          {messages.length === 0 && (
+            <div className="text-zinc-500 italic">--- System: Đang đợi lệnh từ pháp sư... Đừng rủ đi Bedwars, đang lag vcl! ---</div>
+          )}
+          {messages.map((m, i) => (
+            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] p-2 rounded ${m.role === 'user' ? 'bg-[#004400] text-white' : 'bg-[#111] border border-[#00ff00]'}`}>
+                <span className="text-[10px] block opacity-50">{m.role === 'user' ? 'YOU' : 'NOOB'}</span>
+                <p className="whitespace-pre-wrap">{m.text}</p>
+              </div>
+            </div>
+          ))}
+          {loading && <div className="animate-pulse text-[#00ff00]">Noob đang gõ thuật toán...</div>}
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <div className="flex gap-2">
+          <span className="text-[#00ff00] py-2">{'>'}</span>
+          <input 
+            className="flex-1 bg-transparent border-none outline-none text-[#00ff00] placeholder:text-[#004400]"
+            value={input} 
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Hỏi về BTC, JS hoặc Fireball..."
+          />
+          <button 
+            onClick={sendMessage}
+            className="bg-[#00ff00] text-black px-4 py-1 hover:bg-white transition-colors font-bold"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            PUSH
+          </button>
         </div>
-      </main>
+      </div>
+      <footer className="mt-4 text-[10px] text-zinc-600">
+        Deploy by Vercel | Gas: Satoshi | Project: #FreeAbcsnoobhelper
+      </footer>
     </div>
   );
 }
